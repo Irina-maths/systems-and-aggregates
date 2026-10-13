@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Системы и совокупности</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    min-height: 100vh; margin: 0; padding: 14px;
+    color: #fff;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 { font-size: 22px; margin: 6px 0 4px; text-align: center; text-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+  .subtitle { font-size: 13px; opacity: 0.9; margin-bottom: 12px; text-align: center; max-width: 700px; line-height: 1.45; }
+
+  #levelScreen { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 12px; width: 100%; max-width: 620px; }
+  #levelScreen h2 { font-size: 20px; margin: 0 0 4px; }
+  .level-cards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; }
+  .level-card {
+    flex: 1 1 160px; max-width: 190px;
+    border-radius: 14px; padding: 16px 12px;
+    cursor: pointer; text-align: center;
+    border: 3px solid transparent;
+    transition: transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    user-select: none;
+  }
+  .level-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.5); }
+  .level-card:active { transform: translateY(0); }
+  .level-card .emoji { font-size: 32px; display: block; margin-bottom: 6px; }
+  .level-card .name { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .level-card .desc { font-size: 12px; opacity: 0.95; line-height: 1.35; }
+  .level-easy   { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+  .level-medium { background: linear-gradient(135deg, #f39c12, #e67e22); }
+  .level-hard   { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+  .sound-toggle {
+    margin-top: 4px; display: flex; align-items: center; gap: 8px;
+    font-size: 14px; opacity: 0.9;
+    background: rgba(255,255,255,0.12);
+    padding: 7px 14px; border-radius: 20px;
+    cursor: pointer; user-select: none;
+  }
+  .sound-toggle input { cursor: pointer; }
+
+  #gameScreen { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 800px; }
+  .topbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  .badge { background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .badge.score { background: rgba(46,204,113,0.35); }
+  .badge.timer { background: rgba(241,196,15,0.35); }
+  .badge.progress { background: rgba(155,89,182,0.4); }
+
+  .task-card {
+    background: rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin: 8px 0 16px;
+    width: 100%;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+  .task-card .hint {
+    font-size: 13px; opacity: 0.75; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* Рендеринг систем / совокупностей */
+  .struct { font-family: 'Cambria Math', 'Times New Roman', serif; font-style: italic; font-size: 20px; color: #fff; }
+  .struct-row { display: flex; align-items: stretch; gap: 10px; }
+  .bracket-col {
+    display: flex; flex-direction: column; justify-content: space-between;
+    color: #ffe082; font-size: 1.6em; font-family: 'DejaVu Sans', 'Segoe UI Symbol', monospace;
+    line-height: 0.9;
+    flex-shrink: 0;
+    padding: 2px 0;
+  }
+  .items-col { display: flex; flex-direction: column; gap: 10px; justify-content: space-around; }
+  .struct-line { padding: 2px 0; }
+  .struct-row.nested { margin-left: 4px; }
+
+  /* Варианты ответа */
+  .options { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; width: 100%; }
+  .option-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.10);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #fff;
+    font-size: 17px;
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .option-btn:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.6); }
+  .option-btn:active { transform: scale(0.99); }
+  .option-btn .letter {
+    font-family: 'Segoe UI', sans-serif;
+    font-style: normal;
+    font-weight: 700;
+    background: rgba(255,255,255,0.25);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .option-btn.correct { background: rgba(39,174,96,0.5); border-color: #27ae60; }
+  .option-btn.wrong   { background: rgba(231,76,60,0.5); border-color: #e74c3c; }
+  .option-btn.disabled { cursor: default; opacity: 0.75; }
+  .option-btn.disabled:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.3); }
+  .option-btn.correct.disabled:hover { background: rgba(39,174,96,0.5); border-color: #27ae60; }
+  .option-btn.wrong.disabled:hover { background: rgba(231,76,60,0.5); border-color: #e74c3c; }
+
+  .feedback {
+    margin-top: 16px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.55;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.ok  { background: rgba(39,174,96,0.35); color: #eafff0; }
+  .feedback.bad { background: rgba(231,76,60,0.35); color: #ffe3e0; }
+  .feedback b { color: #ffe082; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+  button {
+    padding: 10px 18px; border: none; border-radius: 10px;
+    font-size: 15px; cursor: pointer; font-weight: 700;
+    transition: transform 0.1s, box-shadow 0.2s, filter 0.2s;
+    color: #fff;
+  }
+  button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); filter: brightness(1.08); }
+  button:active { transform: translateY(0); }
+  .btn-next { background: #27ae60; }
+  .btn-retry { background: #8e44ad; }
+  .btn-level { background: #34495e; }
+  .btn-hidden { display: none; }
+
+  .legend { margin-top: 12px; font-size: 12px; opacity: 0.85; text-align: center; max-width: 700px; line-height: 1.55; }
+  .legend b { color: #ffe082; }
+
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  .pop { animation: pop 0.35s ease; }
+</style>
+</head>
+<body>
+<h1>🧩 Системы и совокупности</h1>
+
+<div id="levelScreen">
+  <h2>Выбери уровень сложности</h2>
+  <div class="level-cards">
+    <div class="level-card level-easy" data-level="easy">
+      <span class="emoji">🐣</span>
+      <div class="name">Лёгкий</div>
+      <div class="desc">Уравнения и простые неравенства.</div>
+    </div>
+    <div class="level-card level-medium" data-level="medium">
+      <span class="emoji">🦊</span>
+      <div class="name">Средний</div>
+      <div class="desc">Неравенства и вложенные конструкции.</div>
+    </div>
+    <div class="level-card level-hard" data-level="hard">
+      <span class="emoji">🐉</span>
+      <div class="name">Сложный</div>
+      <div class="desc">Двойные вложения и составные конструкции.</div>
+    </div>
+  </div>
+  <label class="sound-toggle">
+    <input type="checkbox" id="soundCheck" checked>
+    🔊 Звук включён
+  </label>
+</div>
+
+<div id="gameScreen">
+  <div class="topbar">
+    <span class="badge" id="levelBadge">Уровень</span>
+    <span class="badge progress" id="progressBadge">Задача 1/6</span>
+    <span class="badge score" id="scoreBadge">⭐ Очки: 0</span>
+    <span class="badge timer" id="timerBadge">⏱ 00:00</span>
+  </div>
+
+  <div class="task-card">
+    <div class="hint">Реши и выбери итоговый ответ</div>
+    <div id="structArea"></div>
+  </div>
+
+  <div class="options" id="optionsArea"></div>
+  <div class="feedback" id="feedbackArea"></div>
+
+  <div class="controls">
+    <button class="btn-next btn-hidden" id="btnNext">➡️ Дальше</button>
+    <button class="btn-retry btn-hidden" id="btnRetry">🔁 Решить похожую задачу</button>
+    <button class="btn-level" id="btnLevel">🏠 Сменить уровень</button>
+  </div>
+
+  <div class="legend">
+    <b>Система</b> — фигурная скобка, «и» (пересечение). <b>Совокупность</b> — квадратная скобка, «или» (объединение).
+  </div>
+</div>
+<script>
+"use strict";
+
+/* ---------- Звук ---------- */
+var audioCtx = null;
+function soundEnabled(){var c=document.getElementById('soundCheck');return c?c.checked:true;}
+function ensureAudio(){if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){audioCtx=null;}}if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();}
+function beep(f,d,t,v,dl){t=t||'sine';v=v||0.15;dl=dl||0;if(!soundEnabled())return;ensureAudio();if(!audioCtx)return;var s=audioCtx.currentTime+dl;var o=audioCtx.createOscillator();var g=audioCtx.createGain();o.type=t;o.frequency.setValueAtTime(f,s);g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(v,s+0.01);g.gain.exponentialRampToValueAtTime(0.0001,s+d);o.connect(g);g.connect(audioCtx.destination);o.start(s);o.stop(s+d+0.02);}
+function playWin(){var n=[523,659,784,1047];for(var i=0;i<n.length;i++)beep(n[i],0.18,'sine',0.16,i*0.11);}
+function playWrong(){beep(220,0.18,'square',0.10,0);beep(165,0.22,'square',0.10,0.14);}
+function playClick(){beep(440,0.06,'triangle',0.08,0);}
+
+/* ---------- Банк задач ----------
+   struct: {t:'sys'|'cumul'|'line', text?, items?}
+   options: массив из 4 строк; correct хранится отдельно
+---------- */
+var PROBLEMS = {
+  easy: [
+    { struct:{t:'sys',items:[{t:'line',text:'x² − 5x + 6 = 0'},{t:'line',text:'x² − 9 = 0'}]},
+      correct:'{3}', options:['{−3; 2; 3}','{2}','∅'],
+      explain:'Первое уравнение: x = 2; 3. Второе: x = ±3. Система — это «и», пересечение. Общий корень — только x = 3.' },
+    { struct:{t:'sys',items:[{t:'line',text:'x² − 7x + 12 = 0'},{t:'line',text:'x² − 4 = 0'}]},
+      correct:'∅', options:['{−2; 2; 3; 4}','{3; 4}','{2}'],
+      explain:'Первое: x = 3; 4. Второе: x = ±2. Общих корней нет → система не имеет решений.' },
+    { struct:{t:'cumul',items:[{t:'line',text:'x² − 5x + 6 = 0'},{t:'line',text:'x² − 9 = 0'}]},
+      correct:'{−3; 2; 3}', options:['{3}','{2; 3}','{−3; 3}'],
+      explain:'Первое: 2; 3. Второе: −3; 3. Совокупность — «или», объединение: {−3; 2; 3}.' },
+    { struct:{t:'cumul',items:[{t:'line',text:'x² + 3x − 10 = 0'},{t:'line',text:'x² − 25 = 0'}]},
+      correct:'{−5; 2; 5}', options:['{−5}','{2; 5}','{−5; 2}'],
+      explain:'Первое: −5; 2. Второе: −5; 5. Объединение: {−5; 2; 5}.' },
+    { struct:{t:'sys',items:[{t:'line',text:'x² − 5x + 6 > 0'},{t:'line',text:'x − 5 < 0'}]},
+      correct:'(−∞; 2) ∪ (3; 5)', options:['(−∞; 5)','(−∞; 2) ∪ (3; +∞)','(2; 3)'],
+      explain:'Первое: (−∞; 2) ∪ (3; +∞). Второе: (−∞; 5). Пересечение: (−∞; 2) ∪ (3; 5).' },
+    { struct:{t:'cumul',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x + 3 > 0'}]},
+      correct:'(−3; +∞)', options:['(−∞; −2) ∪ (2; +∞)','(2; +∞)','(−3; −2) ∪ (2; +∞)'],
+      explain:'Первое: (−∞; −2) ∪ (2; +∞). Второе: (−3; +∞). Объединение: (−3; +∞).' }
+  ],
+  medium: [
+    { struct:{t:'sys',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x² − 6x + 5 < 0'}]},
+      correct:'(2; 5)', options:['(1; 5)','(−∞; −2) ∪ (1; +∞)','(−∞; −2) ∪ (2; +∞)'],
+      explain:'Первое: (−∞; −2) ∪ (2; +∞). Второе: (1; 5). Пересечение: (2; 5).' },
+    { struct:{t:'sys',items:[{t:'line',text:'x² − 4 < 0'},{t:'line',text:'x² − 6x + 5 > 0'}]},
+      correct:'(−2; 1)', options:['(−2; 2)','(−∞; 1) ∪ (5; +∞)','∅'],
+      explain:'Первое: (−2; 2). Второе: (−∞; 1) ∪ (5; +∞). Пересечение: (−2; 1).' },
+    { struct:{t:'cumul',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x² − 6x + 5 < 0'}]},
+      correct:'(−∞; −2) ∪ (1; +∞)', options:['(2; 5)','(−∞; −2) ∪ (2; +∞)','(1; 5)'],
+      explain:'Первое: (−∞; −2) ∪ (2; +∞). Второе: (1; 5). Объединение: (−∞; −2) ∪ (1; +∞).' },
+    { struct:{t:'cumul',items:[{t:'line',text:'x² − 4 < 0'},{t:'line',text:'x² − 6x + 5 > 0'}]},
+      correct:'ℝ', options:['(−2; 1)','(−2; 2)','(−∞; 1) ∪ (5; +∞)'],
+      explain:'Первое: (−2; 2). Второе: (−∞; 1) ∪ (5; +∞). Объединение — всё ℝ.' },
+    { struct:{t:'sys',items:[
+        {t:'cumul',items:[{t:'line',text:'x² − 5x + 6 = 0'},{t:'line',text:'x = 5'}]},
+        {t:'line',text:'x > −1'}]},
+      correct:'{2; 3; 5}', options:['{2; 3}','∅','{5}'],
+      explain:'Внутренняя совокупность: {2; 3; 5}. Условие x > −1 выполнено для всех. Ответ: {2; 3; 5}.' },
+    { struct:{t:'cumul',items:[
+        {t:'sys',items:[{t:'line',text:'x² − 9 = 0'},{t:'line',text:'x > 0'}]},
+        {t:'line',text:'x² − 5x + 4 = 0'}]},
+      correct:'{1; 3; 4}', options:['{−3; 1; 3; 4}','{3}','{1; 4}'],
+      explain:'Первая система: x = ±3 и x > 0 → {3}. Второе: {1; 4}. Объединение: {1; 3; 4}.' }
+  ],
+  hard: [
+    { struct:{t:'sys',items:[
+        {t:'cumul',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x² − 6x + 5 < 0'}]},
+        {t:'line',text:'x < 3'}]},
+      correct:'(−∞; −2) ∪ (1; 3)',
+      options:['(−∞; −2) ∪ (2; 3)','(−∞; 3)','(−∞; −2) ∪ (1; 5)'],
+      explain:'Внутренняя совокупность: (−∞; −2) ∪ (1; +∞). Пересечение с x < 3: (−∞; −2) ∪ (1; 3).' },
+    { struct:{t:'sys',items:[
+        {t:'cumul',items:[{t:'line',text:'x² − 4 < 0'},{t:'line',text:'x² − 6x + 5 > 0'}]},
+        {t:'line',text:'x > −1'}]},
+      correct:'(−1; 2) ∪ (5; +∞)',
+      options:['(−2; 1)','ℝ','∅'],
+      explain:'Внутренняя совокупность: (−∞; 2) ∪ (5; +∞). Пересечение с x > −1: (−1; 2) ∪ (5; +∞).' },
+    { struct:{t:'cumul',items:[
+        {t:'sys',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x² − 9 < 0'}]},
+        {t:'line',text:'x² − 6x + 5 < 0'}]},
+      correct:'(−3; −2) ∪ (1; 5)',
+      options:['(−3; −2) ∪ (2; 3)','(−3; 5)','(1; 5)'],
+      explain:'Система: (−3; −2) ∪ (2; 3). Второе: (1; 5). Объединение: (−3; −2) ∪ (1; 5).' },
+    { struct:{t:'cumul',items:[
+        {t:'sys',items:[{t:'line',text:'x² − 4 < 0'},{t:'line',text:'x² − 6x + 5 > 0'}]},
+        {t:'line',text:'x² − 9 > 0'}]},
+      correct:'(−∞; −3) ∪ (−2; 1) ∪ (3; +∞)',
+      options:['(−2; 1)','(−∞; −3) ∪ (3; +∞)','ℝ'],
+      explain:'Система: (−2; 1). Второе: (−∞; −3) ∪ (3; +∞). Объединение: (−∞; −3) ∪ (−2; 1) ∪ (3; +∞).' },
+    { struct:{t:'cumul',items:[
+        {t:'sys',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x² − 9 < 0'}]},
+        {t:'sys',items:[{t:'line',text:'x² − 6x + 5 < 0'},{t:'line',text:'x² − 16 < 0'}]}]},
+      correct:'(−3; −2) ∪ (1; 4)',
+      options:['(−3; −2) ∪ (2; 3)','(−3; 4)','(1; 4)'],
+      explain:'Первая система: (−3; −2) ∪ (2; 3). Вторая: (1; 4). Объединение: (−3; −2) ∪ (1; 4).' },
+    { struct:{t:'sys',items:[
+        {t:'cumul',items:[{t:'line',text:'x² − 4 > 0'},{t:'line',text:'x² − 6x + 5 < 0'}]},
+        {t:'cumul',items:[{t:'line',text:'x² − 9 < 0'},{t:'line',text:'x > 0'}]}]},
+      correct:'(−3; −2) ∪ (1; +∞)',
+      options:['(1; +∞)','(−3; +∞)','(−3; −2) ∪ (2; +∞)'],
+      explain:'Первая совокупность: (−∞; −2) ∪ (1; +∞). Вторая: (−3; +∞). Пересечение: (−3; −2) ∪ (1; +∞).' }
+  ]
+};
+
+/* ---------- Состояние ---------- */
+var currentLevel = null;
+var currentTasks = [];     // перемешанный список задач уровня
+var currentIndex = 0;
+var currentTask = null;
+var answered = false;
+var score = 0;
+var correctCount = 0;
+var timerStart = 0;
+var timerInterval = null;
+
+/* ---------- Утилиты ---------- */
+function shuffle(a){var r=a.slice();for(var i=r.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=r[i];r[i]=r[j];r[j]=t;}return r;}
+function levelName(l){return l==='easy'?'🐣 Лёгкий':l==='medium'?'🦊 Средний':'🐉 Сложный';}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ---------- Рендер структуры ---------- */
+function bracketChars(n, isSys) {
+  if (n <= 0) return [];
+  var top = isSys ? '⎧' : '⎡';
+  var bot = isSys ? '⎩' : '⎣';
+  var mid = isSys ? '⎨' : '⎢';
+  var ext = isSys ? '⎪' : '⎢';
+  if (n === 1) return [isSys ? '⎨' : '⎢'];
+  var arr = [];
+  for (var i = 0; i < n; i++) {
+    if (i === 0) arr.push(top);
+    else if (i === n - 1) arr.push(bot);
+    else if (i === Math.floor((n - 1) / 2) + 1) arr.push(mid);
+    else arr.push(ext);
+  }
+  return arr;
+}
+
+function renderStruct(s) {
+  if (s.t === 'line') {
+    return '<div class="struct-line">' + escapeHtml(s.text) + '</div>';
+  }
+  var isSys = s.t === 'sys';
+  var n = s.items.length;
+  var chars = bracketChars(n, isSys);
+  var itemsHtml = s.items.map(function(it){ return renderStruct(it); }).join('');
+  var charsHtml = chars.map(function(c){ return '<span>' + c + '</span>'; }).join('');
+  return '<div class="struct-row">' +
+    '<div class="bracket-col">' + charsHtml + '</div>' +
+    '<div class="items-col">' + itemsHtml + '</div>' +
+    '</div>';
+}
+
+/* ---------- Запуск уровня ---------- */
+function startLevel(level) {
+  currentLevel = level;
+  currentTasks = shuffle(PROBLEMS[level].slice());
+  currentIndex = 0;
+  score = 0;
+  correctCount = 0;
+  document.getElementById('levelScreen').style.display = 'none';
+  document.getElementById('gameScreen').style.display = 'flex';
+  document.getElementById('levelBadge').textContent = 'Уровень: ' + levelName(level);
+  startTimer();
+  updateScore();
+  loadTask();
+  playClick();
+}
+
+function backToLevels() {
+  stopTimer();
+  document.getElementById('gameScreen').style.display = 'none';
+  document.getElementById('levelScreen').style.display = 'flex';
+  playClick();
+}
+
+/* ---------- Таймер ---------- */
+function startTimer(){ stopTimer(); timerStart = Date.now(); updateTimer(); timerInterval = setInterval(updateTimer, 500); }
+function stopTimer(){ if(timerInterval){clearInterval(timerInterval);timerInterval=null;} }
+function updateTimer(){
+  var sec = Math.floor((Date.now()-timerStart)/1000);
+  var mm = String(Math.floor(sec/60)).padStart(2,'0');
+  var ss = String(sec%60).padStart(2,'0');
+  document.getElementById('timerBadge').textContent = '⏱ ' + mm + ':' + ss;
+}
+function updateScore(){
+  var b = document.getElementById('scoreBadge');
+  b.textContent = '⭐ Очки: ' + score;
+  b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+}
+
+/* ---------- Загрузка задачи ---------- */
+function loadTask() {
+  if (currentIndex >= currentTasks.length) { finishLevel(); return; }
+  currentTask = currentTasks[currentIndex];
+  answered = false;
+
+  document.getElementById('progressBadge').textContent = 'Задача ' + (currentIndex + 1) + '/' + currentTasks.length;
+
+  // Строим структуру
+  document.getElementById('structArea').innerHTML = renderStruct(currentTask.struct);
+
+  // Собираем варианты: правильный + 3 неправильных, перемешать
+  var allOpts = shuffle([currentTask.correct].concat(currentTask.options));
+  var letters = ['A','B','C','D'];
+  var html = '';
+  for (var i = 0; i < allOpts.length; i++) {
+    html += '<button class="option-btn" data-value="' + escapeHtml(allOpts[i]) + '">' +
+              '<span class="letter">' + letters[i] + '</span>' +
+              '<span class="opt-text">' + escapeHtml(allOpts[i]) + '</span>' +
+            '</button>';
+  }
+  var optArea = document.getElementById('optionsArea');
+  optArea.innerHTML = html;
+  var btns = optArea.querySelectorAll('.option-btn');
+  for (var k = 0; k < btns.length; k++) {
+    btns[k].addEventListener('click', onOptionClick);
+  }
+
+  // Скрыть фидбэк и кнопки
+  var fb = document.getElementById('feedbackArea');
+  fb.className = 'feedback';
+  fb.innerHTML = '';
+  document.getElementById('btnNext').classList.add('btn-hidden');
+  document.getElementById('btnRetry').classList.add('btn-hidden');
+}
+
+/* ---------- Обработка ответа ---------- */
+function onOptionClick(e) {
+  if (answered) return;
+  answered = true;
+  var chosen = this.getAttribute('data-value');
+  var isCorrect = (chosen === currentTask.correct);
+
+  // Подсветка
+  var btns = document.querySelectorAll('.option-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.add('disabled');
+    var val = btns[i].getAttribute('data-value');
+    if (val === currentTask.correct) btns[i].classList.add('correct');
+    else if (val === chosen) btns[i].classList.add('wrong');
+  }
+
+  var fb = document.getElementById('feedbackArea');
+  if (isCorrect) {
+    score += 10;
+    correctCount++;
+    updateScore();
+    playWin();
+    fb.className = 'feedback show ok';
+    fb.innerHTML = '<b>Верно!</b> ' + escapeHtml(currentTask.explain);
+    document.getElementById('btnNext').classList.remove('btn-hidden');
+  } else {
+    playWrong();
+    fb.className = 'feedback show bad';
+    fb.innerHTML = '<b>Неверно.</b> ' + escapeHtml(currentTask.explain) +
+      '<br><br>Правильный ответ: <b>' + escapeHtml(currentTask.correct) + '</b>';
+    document.getElementById('btnRetry').classList.remove('btn-hidden');
+    document.getElementById('btnNext').classList.remove('btn-hidden');
+  }
+}
+
+/* ---------- Следующая задача / похожая ---------- */
+function nextTask() {
+  currentIndex++;
+  loadTask();
+  playClick();
+}
+
+function retrySimilar() {
+  // Подбираем похожую задачу: та же тема (та же структура), но другой экземпляр из банка того же уровня
+  // Ищем задачу с такой же верхнеуровневой структурой, отличную от текущей
+  var pool = PROBLEMS[currentLevel].filter(function(p) {
+    return p.struct.t === currentTask.struct.t && p !== currentTask;
+  });
+  if (pool.length === 0) pool = PROBLEMS[currentLevel].filter(function(p) { return p !== currentTask; });
+  var pick = pool[Math.floor(Math.random() * pool.length)];
+  // Заменяем текущую задачу на новую
+  currentTasks[currentIndex] = pick;
+  loadTask();
+  playClick();
+}
+
+/* ---------- Финиш уровня ---------- */
+function finishLevel() {
+  stopTimer();
+  var total = currentTasks.length;
+  var pct = Math.round(100 * correctCount / total);
+  var sec = Math.floor((Date.now() - timerStart) / 1000);
+  var mm = Math.floor(sec / 60);
+  var ss = sec % 60;
+
+  document.getElementById('structArea').innerHTML =
+    '<div style="text-align:center;font-size:22px;font-weight:700;margin:20px 0;">' +
+    '🏁 Уровень пройден!</div>';
+  document.getElementById('optionsArea').innerHTML = '';
+  var fb = document.getElementById('feedbackArea');
+  fb.className = 'feedback show ok';
+  fb.innerHTML = 'Правильных ответов: <b>' + correctCount + ' из ' + total + '</b> (' + pct + '%)<br>' +
+    'Очки за уровень: <b>' + score + '</b><br>' +
+    'Время: <b>' + mm + ' мин ' + ss + ' с</b>';
+
+  document.getElementById('btnNext').classList.add('btn-hidden');
+  document.getElementById('btnRetry').classList.add('btn-hidden');
+  document.getElementById('progressBadge').textContent = 'Готово';
+}
+
+/* ---------- Привязка кнопок ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  var cards = document.querySelectorAll('.level-card');
+  for (var i = 0; i < cards.length; i++) {
+    cards[i].addEventListener('click', function () {
+      var lvl = this.getAttribute('data-level');
+      if (lvl) startLevel(lvl);
+    });
+  }
+  document.getElementById('btnNext').addEventListener('click', nextTask);
+  document.getElementById('btnRetry').addEventListener('click', retrySimilar);
+  document.getElementById('btnLevel').addEventListener('click', backToLevels);
+});
+</script>
+</body>
+</html>
