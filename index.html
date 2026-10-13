@@ -62,24 +62,42 @@
     box-shadow: 0 6px 20px rgba(0,0,0,0.3);
   }
   .task-card .hint {
-    font-size: 13px; opacity: 0.75; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;
+    font-size: 13px; opacity: 0.75; margin-bottom: 12px;
+    text-transform: uppercase; letter-spacing: 1px;
   }
 
-  /* Рендеринг систем / совокупностей */
+  /* ---------- Отрисовка систем / совокупностей ---------- */
   .struct { font-family: 'Cambria Math', 'Times New Roman', serif; font-style: italic; font-size: 20px; color: #fff; }
-  .struct-row { display: flex; align-items: stretch; gap: 10px; }
-  .bracket-col {
-    display: flex; flex-direction: column; justify-content: space-between;
-    color: #ffe082; font-size: 1.6em; font-family: 'DejaVu Sans', 'Segoe UI Symbol', monospace;
-    line-height: 0.9;
-    flex-shrink: 0;
-    padding: 2px 0;
-  }
-  .items-col { display: flex; flex-direction: column; gap: 10px; justify-content: space-around; }
-  .struct-line { padding: 2px 0; }
-  .struct-row.nested { margin-left: 4px; }
+  .struct-row { display: flex; align-items: stretch; gap: 12px; margin: 6px 0; }
 
-  /* Варианты ответа */
+  .bracket-col {
+    flex-shrink: 0;
+    width: 22px;
+    position: relative;
+    align-self: stretch;
+  }
+  /* Система — фигурная скобка через SVG */
+  .bracket-col.sys svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    color: #ffe082;
+  }
+  /* Совокупность — квадратная скобка, рисуется CSS-ом */
+  .bracket-col.cumul::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 12px;
+    border-left: 3px solid #ffe082;
+    border-top: 3px solid #ffe082;
+    border-bottom: 3px solid #ffe082;
+  }
+
+  .items-col { display: flex; flex-direction: column; gap: 14px; justify-content: space-around; flex: 1; }
+  .struct-line { padding: 3px 0; white-space: nowrap; }
+
+  /* ---------- Варианты ответа ---------- */
   .options { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; width: 100%; }
   .option-btn {
     display: flex; align-items: center; gap: 12px;
@@ -213,10 +231,7 @@ function playWin(){var n=[523,659,784,1047];for(var i=0;i<n.length;i++)beep(n[i]
 function playWrong(){beep(220,0.18,'square',0.10,0);beep(165,0.22,'square',0.10,0.14);}
 function playClick(){beep(440,0.06,'triangle',0.08,0);}
 
-/* ---------- Банк задач ----------
-   struct: {t:'sys'|'cumul'|'line', text?, items?}
-   options: массив из 4 строк; correct хранится отдельно
----------- */
+/* ---------- Банк задач ---------- */
 var PROBLEMS = {
   easy: [
     { struct:{t:'sys',items:[{t:'line',text:'x² − 5x + 6 = 0'},{t:'line',text:'x² − 9 = 0'}]},
@@ -304,7 +319,7 @@ var PROBLEMS = {
 
 /* ---------- Состояние ---------- */
 var currentLevel = null;
-var currentTasks = [];     // перемешанный список задач уровня
+var currentTasks = [];
 var currentIndex = 0;
 var currentTask = null;
 var answered = false;
@@ -319,34 +334,31 @@ function levelName(l){return l==='easy'?'🐣 Лёгкий':l==='medium'?'🦊 �
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 /* ---------- Рендер структуры ---------- */
-function bracketChars(n, isSys) {
-  if (n <= 0) return [];
-  var top = isSys ? '⎧' : '⎡';
-  var bot = isSys ? '⎩' : '⎣';
-  var mid = isSys ? '⎨' : '⎢';
-  var ext = isSys ? '⎪' : '⎢';
-  if (n === 1) return [isSys ? '⎨' : '⎢'];
-  var arr = [];
-  for (var i = 0; i < n; i++) {
-    if (i === 0) arr.push(top);
-    else if (i === n - 1) arr.push(bot);
-    else if (i === Math.floor((n - 1) / 2) + 1) arr.push(mid);
-    else arr.push(ext);
-  }
-  return arr;
-}
-
 function renderStruct(s) {
   if (s.t === 'line') {
     return '<div class="struct-line">' + escapeHtml(s.text) + '</div>';
   }
   var isSys = s.t === 'sys';
-  var n = s.items.length;
-  var chars = bracketChars(n, isSys);
   var itemsHtml = s.items.map(function(it){ return renderStruct(it); }).join('');
-  var charsHtml = chars.map(function(c){ return '<span>' + c + '</span>'; }).join('');
+
+  var bracketHtml;
+  if (isSys) {
+    // Фигурная скобка — SVG
+    bracketHtml =
+      '<div class="bracket-col sys">' +
+        '<svg viewBox="0 0 20 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">' +
+          '<path d="M 17 4 Q 4 4 4 25 Q 4 47 1 50 Q 4 53 4 75 Q 4 96 17 96" ' +
+                'fill="none" stroke="currentColor" stroke-width="2.6" ' +
+                'stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+        '</svg>' +
+      '</div>';
+  } else {
+    // Квадратная скобка — CSS
+    bracketHtml = '<div class="bracket-col cumul"></div>';
+  }
+
   return '<div class="struct-row">' +
-    '<div class="bracket-col">' + charsHtml + '</div>' +
+    bracketHtml +
     '<div class="items-col">' + itemsHtml + '</div>' +
     '</div>';
 }
@@ -396,11 +408,8 @@ function loadTask() {
   answered = false;
 
   document.getElementById('progressBadge').textContent = 'Задача ' + (currentIndex + 1) + '/' + currentTasks.length;
-
-  // Строим структуру
   document.getElementById('structArea').innerHTML = renderStruct(currentTask.struct);
 
-  // Собираем варианты: правильный + 3 неправильных, перемешать
   var allOpts = shuffle([currentTask.correct].concat(currentTask.options));
   var letters = ['A','B','C','D'];
   var html = '';
@@ -417,7 +426,6 @@ function loadTask() {
     btns[k].addEventListener('click', onOptionClick);
   }
 
-  // Скрыть фидбэк и кнопки
   var fb = document.getElementById('feedbackArea');
   fb.className = 'feedback';
   fb.innerHTML = '';
@@ -432,7 +440,6 @@ function onOptionClick(e) {
   var chosen = this.getAttribute('data-value');
   var isCorrect = (chosen === currentTask.correct);
 
-  // Подсветка
   var btns = document.querySelectorAll('.option-btn');
   for (var i = 0; i < btns.length; i++) {
     btns[i].classList.add('disabled');
@@ -468,14 +475,11 @@ function nextTask() {
 }
 
 function retrySimilar() {
-  // Подбираем похожую задачу: та же тема (та же структура), но другой экземпляр из банка того же уровня
-  // Ищем задачу с такой же верхнеуровневой структурой, отличную от текущей
   var pool = PROBLEMS[currentLevel].filter(function(p) {
     return p.struct.t === currentTask.struct.t && p !== currentTask;
   });
   if (pool.length === 0) pool = PROBLEMS[currentLevel].filter(function(p) { return p !== currentTask; });
   var pick = pool[Math.floor(Math.random() * pool.length)];
-  // Заменяем текущую задачу на новую
   currentTasks[currentIndex] = pick;
   loadTask();
   playClick();
